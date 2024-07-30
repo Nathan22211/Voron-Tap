@@ -29,7 +29,7 @@ activate_gcode:
    {% set MAX_TEMP = PROBE_TEMP + 5 %}
    {% set ACTUAL_TEMP = printer.extruder.temperature %}
    {% set TARGET_TEMP = printer.extruder.target %}
-   SET_KINEMATICS_LIMIT Z_ACCEL=20 Z_VELOCITY=30 # may need to be tuned per printer. 
+   SET_KINEMATICS_LIMIT Z_ACCEL=15 # may need to be tuned per printer. 
    {% if TARGET_TEMP > PROBE_TEMP %}
       { action_respond_info('Extruder temperature target of %.1fC is too high, lowering to %.1fC' % (TARGET_TEMP, PROBE_TEMP)) }
       M109 S{ PROBE_TEMP }
