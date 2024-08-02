@@ -41,7 +41,32 @@ activate_gcode:
       {% endif %}
    {% endif %}
 on_deactivate_gcode:
-   SET_KINEMATICS_LIMIT Z_ACCEL=<regular_accel> Z_VELOCITY=<regular_velocity>    
+   SET_KINEMATICS_LIMIT Z_ACCEL=<regular_accel>    
+```
+
+you'll want this version if using Z_thermal_adjust
+
+```jinja
+activate_gcode:
+    {% set PROBE_TEMP = 150 %}
+    {% set MAX_TEMP = PROBE_TEMP + 5 %}
+    {% set ACTUAL_TEMP = printer.extruder.temperature %}
+    {% set TARGET_TEMP = printer.extruder.target %}
+    SET_KINEMATICS_LIMIT Z_ACCEL=15 Z_VELOCITY=50
+    SET_Z_THERMAL_ADJUST ENABLE=0
+    {% if TARGET_TEMP > PROBE_TEMP %}
+        { action_respond_info('Extruder temperature target of %.1fC is too high, lowering to %.1fC' % (TARGET_TEMP, PROBE_TEMP)) }
+        M109 S{ PROBE_TEMP }
+    {% else %}
+        # Temperature target is already low enough, but nozzle may still be too hot.
+        {% if ACTUAL_TEMP > MAX_TEMP %}
+            { action_respond_info('Extruder temperature %.1fC is still too high, waiting until below %.1fC' % (ACTUAL_TEMP, MAX_TEMP)) }
+            TEMPERATURE_WAIT SENSOR=extruder MAXIMUM={ MAX_TEMP }
+        {% endif %}
+    {% endif %}
+deactivate_gcode: 
+  SET_KINEMATICS_LIMIT Z_ACCEL=<regular_accel>
+  SET_Z_THERMAL_ADJUST ENABLE=1 TEMP_COEFF=<temp_coeff> REF_TEMP={printer.z_thermal_adjust.temperature}
 ```
 
 5. turn off `deactivate_on_each_sample`
