@@ -1,73 +1,20 @@
 # Updating your Klipper config for Tap
 
-There are a few changes you'll need to make in order to get Tap working properly.
+There are some changes you'll need to make to get Tap working properly.
 
-1. Update your Z endstop: 
-   
-   - Under the `[stepper_z]` block, you'll want to comment out your `position_endstop` and change your `endstop_pin` so that it uses the virtual Z endstop for Tap.
-   
-      - Example: `endstop_pin: probe:z_virtual_endstop`
-   
-   - Be sure to *also* remove any automatically saved `[stepper_z] position_endstop: ...` value that may be found at the **bottom** of your `printer.cfg`file.
+1. import all the cfg files and include `tap_settings.cfg` into your `printer.cfg`
 
-2. Update your Z homing position: 
-   
-   - If you use `[safe_z_home]`, change the location to the center of the bed. If you have a `[homing_override]` make sure that it moves the toolhead to the center of the bed before calling `G28 Z`.
-   
-3. Update your probe's offsets: 
-   
-   - Remember, with Tap, your nozzle IS the probe, so your `[probe] x_offset` and `[probe] y_offset` values should be 0 now. You'll need to manually calibrate the probe's Z offset by using `PROBE_CALIBRATE`.
-   
-4. Add Tap's `activate_gcode:` and `deactivate_gcode` 
-   
-   - This G-code will allow you to probe cold, but will also prevent you from probing with a nozzle at printing temperature (to try to preserve your build surface), and too fast, particularly on the 2.4, to prevent inaccurate readings, preemptive triggering of the probe, or; in the case of the trident; damaging the tool head due to high Z accelerations. This goes in the `[probe]` section of your config.  
+2. add the activate and deactivate gcode found at the bottom of the `tap_settings.cfg` to the `[probe]` section in your `printer.cfg`
 
-```jinja
+3. add `[save_variables]` to your config
 
-activate_gcode:
-   {% set PROBE_TEMP = 150 %}
-   {% set MAX_TEMP = PROBE_TEMP + 5 %}
-   {% set ACTUAL_TEMP = printer.extruder.temperature %}
-   {% set TARGET_TEMP = printer.extruder.target %}
-   SET_KINEMATICS_LIMIT Z_ACCEL=15 # may need to be tuned per printer. 
-   {% if TARGET_TEMP > PROBE_TEMP %}
-      { action_respond_info('Extruder temperature target of %.1fC is too high, lowering to %.1fC' % (TARGET_TEMP, PROBE_TEMP)) }
-      M109 S{ PROBE_TEMP }
-   {% else %}
-   # The temperature target is already low enough, but the nozzle may still be too hot.
-      {% if ACTUAL_TEMP > MAX_TEMP %}
-         { action_respond_info('Extruder temperature %.1fC is still too high, waiting until below %.1fC' % (ACTUAL_TEMP, MAX_TEMP)) }
-         TEMPERATURE_WAIT SENSOR=extruder MAXIMUM={ MAX_TEMP }
-      {% endif %}
-   {% endif %}
-on_deactivate_gcode:
-   SET_KINEMATICS_LIMIT Z_ACCEL=<regular_accel>    
-```
+After that, you can configure the Z acceleration when probing, the homing position; and the speed multiplier thereof, and turn on the z tilt and QGL macros so that `NOZZLE_BRUSH` works properly. One thing you need to put in as a copy of your config is the default Z acceleration.
 
-you'll want this version if using Z_thermal_adjust
+## Note make sure to run `SET_PROBE_TEMP` at least once. This sets the minimum probe temp for your print surface and saves it to the variables file. This varies by print surface but there are some general values below
 
-```jinja
-activate_gcode:
-    {% set PROBE_TEMP = 150 %}
-    {% set MAX_TEMP = PROBE_TEMP + 5 %}
-    {% set ACTUAL_TEMP = printer.extruder.temperature %}
-    {% set TARGET_TEMP = printer.extruder.target %}
-    SET_KINEMATICS_LIMIT Z_ACCEL=15 Z_VELOCITY=50
-    SET_Z_THERMAL_ADJUST ENABLE=0
-    {% if TARGET_TEMP > PROBE_TEMP %}
-        { action_respond_info('Extruder temperature target of %.1fC is too high, lowering to %.1fC' % (TARGET_TEMP, PROBE_TEMP)) }
-        M109 S{ PROBE_TEMP }
-    {% else %}
-        # Temperature target is already low enough, but nozzle may still be too hot.
-        {% if ACTUAL_TEMP > MAX_TEMP %}
-            { action_respond_info('Extruder temperature %.1fC is still too high, waiting until below %.1fC' % (ACTUAL_TEMP, MAX_TEMP)) }
-            TEMPERATURE_WAIT SENSOR=extruder MAXIMUM={ MAX_TEMP }
-        {% endif %}
-    {% endif %}
-deactivate_gcode: 
-  SET_KINEMATICS_LIMIT Z_ACCEL=<regular_accel>
-  SET_Z_THERMAL_ADJUST ENABLE=1 TEMP_COEFF=<temp_coeff> REF_TEMP={printer.z_thermal_adjust.temperature}
-```
-
-5. turn off `deactivate_on_each_sample`
-   - if left on it will move away from the bed at regular Z-axis speed, which will cause inaccuracies in bed meshing. Add `deactivate_on_each_sample: False` to the probe section of your config. 
+|Surface|Temp range(C)|
+|--|--|
+|PEI (any)|150-155|
+|Polyploplene|40-50|
+|Galorite (G10)|130-150|
+|Borosilicate Glass|200-230|
