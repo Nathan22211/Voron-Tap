@@ -15,6 +15,6 @@ After that, you can configure the Z acceleration when probing, the homing positi
 |Surface|Temp range(C)|
 |--|--|
 |PEI (any)|150-155|
-|Polyploplene|40-50|
+|Polyploplene|100-110|
 |Galorite (G10)|130-150|
 |Borosilicate Glass|200-230|
